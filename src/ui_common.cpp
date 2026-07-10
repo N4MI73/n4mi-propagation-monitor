@@ -4,7 +4,22 @@
 #include "ui_common.h"
 #include "data_client.h"
 
+void ui_draw_text_at(const char *text, int16_t cx, int16_t y, uint8_t text_size, uint16_t color) {
+    if (!gfx) return;
+    gfx->setTextSize(text_size);
+    gfx->setTextColor(color);
+    int16_t x1, y1;
+    uint16_t w, h;
+    gfx->getTextBounds(text, 0, 0, &x1, &y1, &w, &h);
+    gfx->setCursor(cx - w / 2, y);
+    gfx->print(text);
+}
+
 void ui_draw_centered_text(const char *text, int16_t y, uint8_t text_size, uint16_t color) {
+    ui_draw_text_at(text, DISPLAY_WIDTH / 2, y, text_size, color);
+}
+
+void ui_draw_centered_text_bold(const char *text, int16_t y, uint8_t text_size, uint16_t color) {
     if (!gfx) return;
     gfx->setTextSize(text_size);
     gfx->setTextColor(color);
@@ -13,6 +28,8 @@ void ui_draw_centered_text(const char *text, int16_t y, uint8_t text_size, uint1
     gfx->getTextBounds(text, 0, 0, &x1, &y1, &w, &h);
     int16_t x = (DISPLAY_WIDTH - w) / 2;
     gfx->setCursor(x, y);
+    gfx->print(text);
+    gfx->setCursor(x + 1, y);
     gfx->print(text);
 }
 

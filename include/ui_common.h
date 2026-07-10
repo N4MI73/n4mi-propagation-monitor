@@ -6,6 +6,13 @@
 // use and a lighter shade for supporting/secondary text, so any screen
 // can render "this tier is primary" vs. "this tier is secondary" with
 // the same two-color pattern.
+//
+// UPDATED 2026-07-10: real-hardware testing showed every textSize(1)
+// element (header, stat labels, band lists, tower text, footer) was
+// completely invisible on the actual AMOLED, while textSize(2)+ and
+// primitive shape draws (circles/lines) rendered fine. Minimum text
+// size going forward is 2. UI_COLOR_LABEL also brightened slightly
+// since it's now doing more visual work at the larger size.
 
 #pragma once
 
@@ -24,16 +31,31 @@ static const uint16_t UI_COLOR_POOR       = RGB565(226, 75, 74);
 static const uint16_t UI_COLOR_POOR_LIGHT = RGB565(240, 149, 149);
 
 // Chrome / neutral
-static const uint16_t UI_COLOR_LABEL   = RGB565(107, 107, 107);
+static const uint16_t UI_COLOR_LABEL   = RGB565(150, 150, 150);
 static const uint16_t UI_COLOR_VALUE   = RGB565(232, 232, 232);
-static const uint16_t UI_COLOR_MUTED   = RGB565(74, 74, 74);
-static const uint16_t UI_COLOR_DIVIDER = RGB565(42, 42, 42);
+static const uint16_t UI_COLOR_MUTED   = RGB565(110, 110, 110);
+static const uint16_t UI_COLOR_DIVIDER = RGB565(50, 50, 50);
 static const uint16_t UI_COLOR_SUN     = RGB565(239, 159, 39);
 
 // Draws text horizontally centered on the display at the given cursor y.
+// Minimum text_size is 2 -- size 1 has been confirmed invisible on the
+// real hardware/library combination in use.
 void ui_draw_centered_text(const char *text, int16_t y, uint8_t text_size, uint16_t color);
 
-// Draws a small sun glyph (circle + rays) centered at (cx, cy).
+// Same as ui_draw_centered_text, but centers on an arbitrary x rather
+// than assuming the full display width -- use this for anything laid
+// out in columns (e.g. the stat row) so every label/value in a column
+// shares one exact center point instead of each being centered
+// independently on the whole screen.
+void ui_draw_text_at(const char *text, int16_t cx, int16_t y, uint8_t text_size, uint16_t color);
+
+// Same as above, but simulates a bold weight by drawing the text twice,
+// offset one pixel horizontally -- this font library has no true bold.
+// Intended for headline-weight text (tier word).
+void ui_draw_centered_text_bold(const char *text, int16_t y, uint8_t text_size, uint16_t color);
+
+// Draws a small sun glyph (circle + rays) centered at (cx, cy). Size-
+// independent since it's primitive shape drawing, not text.
 void ui_draw_sun_icon(int16_t cx, int16_t cy, uint16_t color);
 
 // Returns the headline/medium color for a given band tier. Takes an
