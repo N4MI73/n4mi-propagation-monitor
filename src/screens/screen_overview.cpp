@@ -8,7 +8,7 @@
 // has at least one band, if any -- omitted entirely if every band
 // landed in a single tier (see mock scenario 2/3 for that edge case).
 
-#include "screen_overview.h"
+#include "screens/screen_overview.h"
 #include "display_driver.h"
 #include "ui_common.h"
 
