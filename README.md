@@ -1,1 +1,2 @@
-This project is in early development. A proper readme will be here once the project becomes operational.
+This is a sibling project to my streamdeck-ham radio project. When completed, this project will be the first of a family of small ESP32-based desktop hardware instruments (LilyGO T-Encoder Pro), starting with a Propagation Monitor. Backend (PropMon) is a small always-on NAS Docker service; firmware is separate. Once Propagation Monitor is complete, additional desktop panels may include APRS Activity Monitor, DX Cluster Monitor, DXCC Needed Spots Monitor, Satellite Pass Monitor, NAS Status Monitor, Weather Monitor.
+This project is currently in early development. A proper readme will be here once the Propagation Monitor becomes operational.
