@@ -69,3 +69,12 @@ const char *ui_tier_label(uint8_t tier) {
         default:        return "POOR";
     }
 }
+
+void ui_format_age(uint32_t last_updated_ms, char *out, size_t out_len) {
+    uint32_t age_sec = (millis() - last_updated_ms) / 1000;
+    if (age_sec < 60) {
+        snprintf(out, out_len, "Updated %lus ago", (unsigned long)age_sec);
+    } else {
+        snprintf(out, out_len, "Updated %lum ago", (unsigned long)(age_sec / 60));
+    }
+}

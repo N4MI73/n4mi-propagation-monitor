@@ -11,15 +11,29 @@
 // this project turns out to have the original SH8601 panel instead,
 // swap Arduino_CO5300 for Arduino_SH8601 below -- same constructor
 // signature, drop-in swap.
+//
+// UPDATED 2026-07-10: all Serial output in this file is now guarded
+// with `if (Serial)`. Confirmed by real-hardware testing that
+// Serial.println() can stall for real time on this ESP32-S3 native
+// USB-CDC setup when nothing is connected to read it -- since these
+// calls run during boot, an unguarded print here could contribute to
+// a slow-feeling startup on a device with no computer attached, which
+// is the normal, expected way this instrument runs once deployed.
 
 #include "display_driver.h"
+
+// See main.cpp for the full explanation -- set to 1 to compile in
+// diagnostic Serial output, 0 (default) to compile it out entirely.
+#define DEBUG_VERBOSE 0
 
 Arduino_GFX *gfx = nullptr;
 static Arduino_OLED *oled = nullptr;
 static Arduino_DataBus *bus = nullptr;
 
 bool display_init() {
-    Serial.println("[display] display_init() starting");
+#if DEBUG_VERBOSE
+    if (Serial) Serial.println("[display] display_init() starting");
+#endif
 
     bus = new Arduino_ESP32QSPI(
         PIN_LCD_CS, PIN_LCD_SCLK,
@@ -37,7 +51,9 @@ bool display_init() {
     oled = static_cast<Arduino_OLED *>(gfx);
 
     if (!gfx->begin()) {
-        Serial.println("[display] gfx->begin() FAILED");
+#if DEBUG_VERBOSE
+        if (Serial) Serial.println("[display] gfx->begin() FAILED");
+#endif
         return false;
     }
 
@@ -51,7 +67,9 @@ bool display_init() {
         delay(2);
     }
 
-    Serial.println("[display] display_init() complete");
+#if DEBUG_VERBOSE
+    if (Serial) Serial.println("[display] display_init() complete");
+#endif
     return true;
 }
 

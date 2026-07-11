@@ -23,6 +23,10 @@
 #include "ui_common.h"
 #include <Arduino.h>
 
+// See main.cpp for the full explanation -- set to 1 to compile in
+// diagnostic Serial output, 0 (default) to compile it out entirely.
+#define DEBUG_VERBOSE 0
+
 #define MAX_BAND_NAMES_SHOWN 4
 
 static void build_band_list(const PropMonData &data, BandCondition tier, char *out, size_t out_len) {
@@ -55,7 +59,10 @@ static uint16_t tower_status_color(const char *status) {
 
 void screen_overview_draw(const PropMonData &data) {
     if (!gfx) return;
+
+    uint32_t t_start = millis();
     display_clear();
+    uint32_t t_clear = millis();
 
     int counts[3] = {0, 0, 0};
     for (int i = 0; i < PROPMON_BAND_COUNT; i++) counts[data.bands[i].condition]++;
@@ -78,18 +85,26 @@ void screen_overview_draw(const PropMonData &data) {
     ui_draw_centered_text("N4MI PROPMON", 35, 2, UI_COLOR_LABEL);
 
     build_band_list(data, primary_tier, band_list, sizeof(band_list));
-    Serial.printf("[overview] primary=%s list=\"%s\"\n", ui_tier_label(primary_tier), band_list);
+#if DEBUG_VERBOSE
+    if (Serial) Serial.printf("[overview] primary=%s list=\"%s\"\n", ui_tier_label(primary_tier), band_list);
+#endif
+    uint32_t t_headline_start = millis();
     ui_draw_centered_text_bold(ui_tier_label(primary_tier), 95, 5, ui_tier_color(primary_tier));
+    uint32_t t_headline_end = millis();
     ui_draw_centered_text(band_list, 145, 2, ui_tier_color_light(primary_tier));
 
     if (has_secondary) {
         build_band_list(data, secondary_tier, band_list, sizeof(band_list));
         char secondary_line[56];
         snprintf(secondary_line, sizeof(secondary_line), "%s: %s", ui_tier_label(secondary_tier), band_list);
-        Serial.printf("[overview] secondary=\"%s\"\n", secondary_line);
+#if DEBUG_VERBOSE
+        if (Serial) Serial.printf("[overview] secondary=\"%s\"\n", secondary_line);
+#endif
         ui_draw_centered_text(secondary_line, 175, 2, ui_tier_color_light(secondary_tier));
     } else {
-        Serial.println("[overview] no secondary tier this scenario");
+#if DEBUG_VERBOSE
+        if (Serial) Serial.println("[overview] no secondary tier this scenario");
+#endif
     }
 
     gfx->drawLine(95, 200, 295, 200, UI_COLOR_DIVIDER);
@@ -120,12 +135,17 @@ void screen_overview_draw(const PropMonData &data) {
     gfx->setCursor(152, 276);
     gfx->print(data.tower_status);
 
-    uint32_t age_sec = (millis() - data.last_updated_ms) / 1000;
     char footer[32];
-    if (age_sec < 60) {
-        snprintf(footer, sizeof(footer), "Updated %lus ago", (unsigned long)age_sec);
-    } else {
-        snprintf(footer, sizeof(footer), "Updated %lum ago", (unsigned long)(age_sec / 60));
-    }
+    ui_format_age(data.last_updated_ms, footer, sizeof(footer));
     ui_draw_centered_text(footer, 320, 2, UI_COLOR_MUTED);
+
+    uint32_t t_end = millis();
+#if DEBUG_VERBOSE
+    if (Serial) {
+        Serial.printf("[timing] clear=%lums headline=%lums total=%lums\n",
+            (unsigned long)(t_clear - t_start),
+            (unsigned long)(t_headline_end - t_headline_start),
+            (unsigned long)(t_end - t_start));
+    }
+#endif
 }

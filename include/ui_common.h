@@ -68,3 +68,10 @@ uint16_t ui_tier_color_light(uint8_t tier);
 
 // Returns the display label for a given band tier ("GOOD"/"FAIR"/"POOR").
 const char *ui_tier_label(uint8_t tier);
+
+// Formats "Updated Xs ago" / "Updated Xm ago" from a millis()-based
+// timestamp. Shared by any screen that shows a data-freshness footer --
+// added here once a second screen (Bands) needed the same formatting
+// Overview already had, per the project's "extract what's actually
+// shared once it's actually shared" framework scope principle.
+void ui_format_age(uint32_t last_updated_ms, char *out, size_t out_len);
