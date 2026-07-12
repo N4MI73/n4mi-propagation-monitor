@@ -29,6 +29,13 @@
 // headline + supporting detail" role Overview does, just without a
 // stat row -- so there's extra vertical room used here for the
 // wrapped message text instead.
+//
+// UPDATED 2026-07-13: the local two-line message wrap (previously a
+// static split_message() helper here) moved to ui_common.cpp as
+// ui_wrap_two_lines() once the ambient alert banner needed the exact
+// same wrap behavior -- logic itself is unchanged, just relocated so
+// both consumers share one proven implementation instead of risking
+// two that quietly diverge.
 
 #include "screens/screen_alerts.h"
 #include "display_driver.h"
@@ -58,44 +65,6 @@ static const char *alert_level_label(AlertLevel level) {
 
 static const char *alert_category_label(AlertCategory cat) {
     return (cat == ALERT_CAT_TOWER) ? "TOWER" : "PROPAGATION";
-}
-
-// Splits msg across two lines, breaking at the last space at or before
-// line1_cap-1 chars rather than mid-word. Truncates line2 with "..."
-// if the remainder still doesn't fit -- deliberately simple (no true
-// word-wrap loop) since PropMon's alert messages are short, single-
-// sentence strings, not paragraphs.
-static void split_message(const char *msg, char *line1, size_t line1_cap, char *line2, size_t line2_cap) {
-    size_t total = strlen(msg);
-    size_t max_line1 = line1_cap - 1;
-
-    if (total <= max_line1) {
-        strncpy(line1, msg, line1_cap);
-        line1[line1_cap - 1] = '\0';
-        line2[0] = '\0';
-        return;
-    }
-
-    size_t split = max_line1;
-    while (split > 0 && msg[split] != ' ') split--;
-    if (split == 0) split = max_line1;
-
-    strncpy(line1, msg, split);
-    line1[split] = '\0';
-
-    const char *rest = msg + split;
-    while (*rest == ' ') rest++;
-    size_t rest_len = strlen(rest);
-    size_t max_line2 = line2_cap - 1;
-
-    if (rest_len <= max_line2) {
-        strncpy(line2, rest, line2_cap);
-        line2[line2_cap - 1] = '\0';
-    } else {
-        strncpy(line2, rest, max_line2 - 3);
-        line2[max_line2 - 3] = '\0';
-        strcat(line2, "...");
-    }
 }
 
 void screen_alerts_draw(const PropMonData &data) {
@@ -136,7 +105,7 @@ void screen_alerts_draw(const PropMonData &data) {
         ui_draw_centered_text(alert_category_label(worst.category), 145, 2, ui_tier_color_light(tier));
 
         char line1[24], line2[24];
-        split_message(worst.message, line1, sizeof(line1), line2, sizeof(line2));
+        ui_wrap_two_lines(worst.message, line1, sizeof(line1), line2, sizeof(line2));
         ui_draw_centered_text(line1, 180, 2, UI_COLOR_VALUE);
         if (line2[0] != '\0') {
             ui_draw_centered_text(line2, 205, 2, UI_COLOR_VALUE);

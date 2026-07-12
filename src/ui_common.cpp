@@ -84,6 +84,43 @@ void ui_format_age(uint32_t last_updated_ms, char *out, size_t out_len) {
     }
 }
 
+// Moved here 2026-07-13 from screen_alerts.cpp's local static
+// split_message() -- logic unchanged, just relocated and renamed so
+// the ambient alert banner can reuse the exact same proven wrap
+// behavior instead of a second, possibly-diverging implementation.
+void ui_wrap_two_lines(const char *msg, char *line1, size_t line1_cap, char *line2, size_t line2_cap) {
+    size_t total = strlen(msg);
+    size_t max_line1 = line1_cap - 1;
+
+    if (total <= max_line1) {
+        strncpy(line1, msg, line1_cap);
+        line1[line1_cap - 1] = '\0';
+        line2[0] = '\0';
+        return;
+    }
+
+    size_t split = max_line1;
+    while (split > 0 && msg[split] != ' ') split--;
+    if (split == 0) split = max_line1;
+
+    strncpy(line1, msg, split);
+    line1[split] = '\0';
+
+    const char *rest = msg + split;
+    while (*rest == ' ') rest++;
+    size_t rest_len = strlen(rest);
+    size_t max_line2 = line2_cap - 1;
+
+    if (rest_len <= max_line2) {
+        strncpy(line2, rest, line2_cap);
+        line2[line2_cap - 1] = '\0';
+    } else {
+        strncpy(line2, rest, max_line2 - 3);
+        line2[max_line2 - 3] = '\0';
+        strcat(line2, "...");
+    }
+}
+
 // ---------------------------------------------------------------------
 // Long-press hold-progress bar (added Phase 3 -- real navigation)
 // ---------------------------------------------------------------------
@@ -134,4 +171,78 @@ void ui_draw_hold_progress(float fraction) {
 void ui_clear_hold_progress() {
     if (!gfx) return;
     gfx->fillRect(HOLD_BAR_X, HOLD_BAR_Y, HOLD_BAR_W, HOLD_BAR_H, RGB565(0, 0, 0));
+}
+
+// ---------------------------------------------------------------------
+// Ambient alert banner + persistent badge (added 2026-07-13)
+// ---------------------------------------------------------------------
+// Both single-primitive draws (fillRect / fillCircle), matching the
+// reliability lesson from the hold-progress bar work above.
+//
+// Banner positioned across the vertical center, inset 20px from each
+// side rather than running edge-to-edge -- the display's true visible
+// radius has already proven to be a little tighter than the
+// mathematical 195px half-width (see the hold-progress bar and footer
+// clipping investigations), so this keeps the band's own left/right
+// ends off that boundary even though the vertical-center band as a
+// whole is the safest available region.
+//
+// Badge position (left of center for propagation, right for tower)
+// reasoned from where every screen's own header sits (centered, per
+// the shared visual grammar) rather than confirmed against each
+// screen's full layout, which wasn't available this session --
+// flagging that the same way earlier placement decisions were.
+
+static uint16_t alert_level_color(uint8_t level) {
+    AlertLevel lvl = (AlertLevel)level;
+    switch (lvl) {
+        case ALERT_CAUTION:  return UI_COLOR_FAIR;
+        case ALERT_WARNING:
+        case ALERT_CRITICAL: return UI_COLOR_POOR;
+        default:              return UI_COLOR_GOOD; // ALERT_NONE -- shouldn't normally be drawn
+    }
+}
+
+// UPDATED 2026-07-13: real-hardware photos showed alert messages
+// ("Geomagnetic storm in progress...", "Wind gust 62mph - secure
+// equipment...") are longer than fit on one line at text_size 2 --
+// confirmed by Dan's own photos, both cut off mid-word at the
+// rectangle's edge. Grown from one message line to two (via the
+// shared ui_wrap_two_lines() above) and the band made taller to fit,
+// recentered on the display's vertical middle to keep the growth
+// symmetric and stay in the same edge-safe zone as before.
+static const int16_t ALERT_BANNER_X = 20;
+static const int16_t ALERT_BANNER_W = 350;
+static const int16_t ALERT_BANNER_Y = 150;
+static const int16_t ALERT_BANNER_H = 85;
+
+void ui_draw_alert_banner(uint8_t category, uint8_t level, const char *message) {
+    if (!gfx) return;
+    AlertCategory cat = (AlertCategory)category;
+    uint16_t bg = alert_level_color(level);
+
+    gfx->fillRect(ALERT_BANNER_X, ALERT_BANNER_Y, ALERT_BANNER_W, ALERT_BANNER_H, bg);
+
+    const char *cat_label = (cat == ALERT_CAT_TOWER) ? "TOWER ALERT" : "PROPAGATION ALERT";
+    ui_draw_centered_text_bold(cat_label, ALERT_BANNER_Y + 18, 2, RGB565(0, 0, 0));
+
+    char line1[24], line2[24];
+    ui_wrap_two_lines(message, line1, sizeof(line1), line2, sizeof(line2));
+    ui_draw_centered_text(line1, ALERT_BANNER_Y + 40, 2, RGB565(0, 0, 0));
+    if (line2[0] != '\0') {
+        ui_draw_centered_text(line2, ALERT_BANNER_Y + 62, 2, RGB565(0, 0, 0));
+    }
+}
+
+static const int16_t ALERT_BADGE_Y        = 60;
+static const int16_t ALERT_BADGE_X_PROP   = 90;   // left of center
+static const int16_t ALERT_BADGE_X_TOWER  = 300;  // right of center
+static const int16_t ALERT_BADGE_RADIUS   = 8;
+
+void ui_draw_alert_badge(uint8_t category, uint8_t level) {
+    if (!gfx) return;
+    AlertCategory cat = (AlertCategory)category;
+    uint16_t color = alert_level_color(level);
+    int16_t x = (cat == ALERT_CAT_TOWER) ? ALERT_BADGE_X_TOWER : ALERT_BADGE_X_PROP;
+    gfx->fillCircle(x, ALERT_BADGE_Y, ALERT_BADGE_RADIUS, color);
 }

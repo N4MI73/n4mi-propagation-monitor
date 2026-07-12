@@ -4,9 +4,19 @@
 // Matches the SVG mockup approved by Dan 2026-07-12: bold teal header,
 // four label/value rows, muted footer hint. PropMon URL and "MOCK
 // DATA" render in normal/bright colors since they're real; Wi-Fi and
-// IP address render dim + italicized-in-spirit (this font library has
-// no italic, so dim + the literal text "Not yet built" carries that
-// job instead) since there's nothing real behind them yet.
+// IP address render dim since there's nothing real behind them yet.
+//
+// UPDATED 2026-07-12 (later same day): the footer's "ROTATE TO EXIT"
+// text was clipped at the bottom edge in real-hardware photos. At
+// y=368 with text_size 2, the glyph's bottom edge lands around y=384
+// -- inside the same tight physical edge margin the hold-progress bar
+// investigation identified (roughly the outer ~15-20px of the 390px
+// display is not reliably visible). The "IP ADDRESS: Not yet built"
+// line just above it, ending around y=355, was never reported as
+// clipped -- so the bottom three rows (Wi-Fi, IP address, footer)
+// were tightened and pulled up to keep the footer's bottom edge well
+// inside that confirmed-safe boundary. Header through Data Source
+// unchanged -- those were never reported as a problem.
 
 #include "screens/screen_config.h"
 #include "display_driver.h"
@@ -30,10 +40,10 @@ void screen_config_draw() {
     ui_draw_centered_text_bold("MOCK DATA", 225, 2, UI_COLOR_FAIR);
 
     ui_draw_centered_text("WI-FI", 262, 2, UI_COLOR_LABEL);
-    ui_draw_centered_text("Not yet built", 285, 2, UI_COLOR_MUTED);
+    ui_draw_centered_text("Not yet built", 280, 2, UI_COLOR_MUTED);
 
-    ui_draw_centered_text("IP ADDRESS", 316, 2, UI_COLOR_LABEL);
-    ui_draw_centered_text("Not yet built", 339, 2, UI_COLOR_MUTED);
+    ui_draw_centered_text("IP ADDRESS", 302, 2, UI_COLOR_LABEL);
+    ui_draw_centered_text("Not yet built", 320, 2, UI_COLOR_MUTED);
 
-    ui_draw_centered_text("ROTATE TO EXIT", 368, 2, UI_COLOR_MUTED);
+    ui_draw_centered_text("ROTATE TO EXIT", 342, 2, UI_COLOR_MUTED);
 }

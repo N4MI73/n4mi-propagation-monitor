@@ -7,10 +7,11 @@
 //
 //   ROTATE_CW / ROTATE_CCW -- cycle Overview -> Bands -> Solar ->
 //                             Alerts -> (wraps). CW advances, CCW goes
-//                             back -- this direction mapping is an
-//                             assumption, not yet confirmed on real
-//                             hardware; easy to swap if it feels
-//                             backwards.
+//                             back -- confirmed correct on real
+//                             hardware 2026-07-12 (the initial mapping
+//                             had this backward; fixed by swapping
+//                             which physical direction calls
+//                             next_screen()/prev_screen(), see below).
 //   SHORT_PRESS             -- force refresh of the current screen.
 //                             Since Phase 3's real HTTP fetch from
 //                             PropMon doesn't exist yet, this also
@@ -31,12 +32,12 @@
 // actually implemented in the Phase 2 mock-testing code:
 //   - 10s idle timeout, returns to Overview from any other screen
 //     (including Config).
-//   - Long-press hold-progress ring (see ui_common.cpp), so a hold in
+//   - Long-press hold-progress bar (see ui_common.cpp), so a hold in
 //     progress is visible instead of giving zero feedback until it
-//     fires. This should also help settle whether the long-press-
-//     feels-like-2.5s report (see encoder.cpp) is pure perception or
-//     a real button-debounce issue -- watch whether the ring climbs
-//     smoothly or stutters/resets mid-hold.
+//     fires. This also settled whether the long-press-feels-like-2.5s
+//     report (see encoder.cpp) was a real button-debounce issue --
+//     confirmed it wasn't (hold duration climbed smoothly with no
+//     stutters or resets).
 //
 // The Bug #1 redraw-coalescing fix (drain every pending encoder event
 // in one loop() pass, redraw at most once per pass) carries over
@@ -88,6 +89,38 @@ static ActiveScreen screen_before_config = ActiveScreen::OVERVIEW;
 // long press). Drives the 10s idle timeout.
 static uint32_t last_interaction_ms = 0;
 
+// ---------------------------------------------------------------------
+// Ambient alert banner + persistent badge (added 2026-07-13)
+// ---------------------------------------------------------------------
+// Per Dan's decisions: the banner fires on any CHANGE in the worst
+// active alert (including severity escalation, not just a brand-new
+// alert from a clear state), persists across screen navigation
+// (rotation doesn't dismiss it early -- the screen changes underneath
+// it), and a force refresh (short press) re-shows it for a fresh
+// duration even when the alert is unchanged. The persistent badge
+// shows independently of the banner's own on/off state, for as long
+// as any alert remains active.
+#define ALERT_BANNER_DURATION_MS 9000 // ~8-10s per the brief's decided ambient-alert behavior
+
+static bool banner_active = false;
+static uint32_t banner_started_ms = 0;
+static AlertCategory banner_category = ALERT_CAT_TOWER;
+static AlertLevel banner_level = ALERT_NONE;
+static char banner_message[48] = "";
+
+// Tracks the worst active alert as of the last refresh, so the next
+// refresh can detect a real change (new alert, escalation, or
+// resolution) rather than re-triggering on every redraw.
+static AlertLevel last_worst_level = ALERT_NONE;
+static AlertCategory last_worst_category = ALERT_CAT_TOWER;
+
+// Set by the SHORT_PRESS case below, consumed once per
+// refresh_and_draw() call -- distinguishes "this redraw is a real
+// data refresh" from ordinary navigation redraws (rotation, long
+// press, idle timeout), which also call refresh_and_draw() but
+// shouldn't re-trigger an unchanged banner on their own.
+static bool force_alert_reshow = false;
+
 static const char *active_screen_name() {
     switch (active_screen) {
         case ActiveScreen::OVERVIEW: return "Overview";
@@ -119,6 +152,70 @@ static ActiveScreen prev_screen(ActiveScreen s) {
     }
 }
 
+// Finds the single worst-severity active alert in `data.alerts[]` (by
+// AlertLevel, where higher enum values are more severe -- see
+// data_client.h). Returns false if no alert is active (alert_count==0
+// or every present entry is ALERT_NONE, matching PropMon's real
+// steady-state placeholder entry). Kept local to main.cpp rather than
+// added to data_client.cpp/.h -- that file's current contents weren't
+// available this session, and this logic is simple enough (a direct
+// AlertLevel enum comparison) that it's very likely equivalent to
+// whatever screen_alerts.cpp already computes for the same purpose,
+// but flagging that as an assumption, not a confirmed match. Worth
+// consolidating into one shared helper later if it's ever handed over.
+static bool find_worst_alert(const PropMonData &data, AlertEntry &out_worst) {
+    bool found = false;
+    for (uint8_t i = 0; i < data.alert_count && i < PROPMON_MAX_ALERTS; i++) {
+        if (data.alerts[i].level == ALERT_NONE) continue;
+        if (!found || data.alerts[i].level > out_worst.level) {
+            out_worst = data.alerts[i];
+            found = true;
+        }
+    }
+    return found;
+}
+
+// Evaluates current_data's alert state after every refresh and
+// decides whether the ambient banner should (re-)appear. See the
+// banner state comment block above for the decided rules.
+static void check_alert_state(bool force_reshow) {
+    AlertEntry worst;
+    bool found = find_worst_alert(current_data, worst);
+    bool changed = found && (worst.level != last_worst_level || worst.category != last_worst_category);
+
+    if (changed || (found && force_reshow)) {
+        banner_active = true;
+        banner_started_ms = millis();
+        banner_category = worst.category;
+        banner_level = worst.level;
+        strncpy(banner_message, worst.message, sizeof(banner_message) - 1);
+        banner_message[sizeof(banner_message) - 1] = '\0';
+#if DEBUG_VERBOSE
+        if (Serial) {
+            Serial.printf("[alert] banner triggered: cat=%d level=%d msg=%s\n",
+                (int)banner_category, (int)banner_level, banner_message);
+        }
+#endif
+    }
+
+    last_worst_level = found ? worst.level : ALERT_NONE;
+    if (found) last_worst_category = worst.category;
+}
+
+// Draws the persistent badge (if any alert is currently active) and
+// the temporary banner (if still within its window) on top of
+// whatever the current screen just drew. Called after every redraw,
+// not just alert-related ones, so both persist correctly across plain
+// screen navigation.
+static void draw_alert_overlays() {
+    if (last_worst_level != ALERT_NONE) {
+        ui_draw_alert_badge((uint8_t)last_worst_category, (uint8_t)last_worst_level);
+    }
+    if (banner_active) {
+        ui_draw_alert_banner((uint8_t)banner_category, (uint8_t)banner_level, banner_message);
+    }
+}
+
 static void draw_active_screen() {
     switch (active_screen) {
         case ActiveScreen::OVERVIEW: screen_overview_draw(current_data); break;
@@ -131,7 +228,10 @@ static void draw_active_screen() {
 
 static void refresh_and_draw() {
     data_client_get_mock(current_data, scenario_index);
+    check_alert_state(force_alert_reshow);
+    force_alert_reshow = false;
     draw_active_screen();
+    draw_alert_overlays();
 }
 
 void setup() {
@@ -195,9 +295,19 @@ void loop() {
                     // doesn't also count as a further cycle step.
                     active_screen = screen_before_config;
                 } else {
+                    // UPDATED 2026-07-12: confirmed on real hardware
+                    // that CW physically produced Overview->Alerts->
+                    // Solar->Bands (backward) against the original
+                    // assumption. Swapped which physical direction
+                    // maps to next_screen()/prev_screen() here --
+                    // next_screen()/prev_screen() themselves are
+                    // unchanged (still define the logical forward
+                    // order Overview->Bands->Solar->Alerts), only the
+                    // mapping from physical rotation to that logical
+                    // order was backward.
                     active_screen = (ev == EncoderEvent::ROTATE_CW)
-                        ? next_screen(active_screen)
-                        : prev_screen(active_screen);
+                        ? prev_screen(active_screen)
+                        : next_screen(active_screen);
                 }
                 need_redraw = true;
                 break;
@@ -205,6 +315,7 @@ void loop() {
             case EncoderEvent::SHORT_PRESS:
                 // Stand-in for a real PropMon fetch -- see file header.
                 scenario_index = (scenario_index + 1) % data_client_mock_scenario_count();
+                force_alert_reshow = true;
 #if DEBUG_VERBOSE
                 if (Serial) Serial.println("[encoder] SHORT PRESS -- force refresh");
 #endif
@@ -247,6 +358,17 @@ void loop() {
             ui_draw_hold_progress(fraction);
             last_progress_draw_ms = millis();
         }
+    }
+
+    // Ambient alert banner -- clears itself after
+    // ALERT_BANNER_DURATION_MS even with no further user interaction,
+    // by forcing one redraw once the timer elapses. A full screen
+    // redraw is required to actually erase it (it's a full-width
+    // overlay strip, not a small isolated region like the
+    // hold-progress bar, so it can't be cleared in place).
+    if (banner_active && (millis() - banner_started_ms) >= ALERT_BANNER_DURATION_MS) {
+        banner_active = false;
+        need_redraw = true;
     }
 
     // Idle timeout -- any screen other than Overview returns there

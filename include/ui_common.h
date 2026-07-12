@@ -93,6 +93,16 @@ const char *ui_tier_label(uint8_t tier);
 // shared once it's actually shared" framework scope principle.
 void ui_format_age(uint32_t last_updated_ms, char *out, size_t out_len);
 
+// Splits `msg` across two output buffers, breaking at the last space
+// at or before (line1_cap-1) characters rather than mid-word. If the
+// remainder still doesn't fit in line2's capacity, it's truncated with
+// "...". Extracted here 2026-07-13 once the ambient alert banner
+// needed the exact same two-line wrap behavior screen_alerts.cpp
+// already had (as a local static helper there) -- same pattern as
+// every other shared helper in this file: extract once a second
+// consumer actually needs it, not before.
+void ui_wrap_two_lines(const char *msg, char *line1, size_t line1_cap, char *line2, size_t line2_cap);
+
 // Draws (or extends) the long-press hold-progress bar, positioned
 // above every screen's header. `fraction` is 0.0-1.0 of the way from
 // LONG_PRESS_PROGRESS_MIN_MS to LONG_PRESS_MS (see config.h). Drawn as
@@ -108,3 +118,30 @@ void ui_draw_hold_progress(float fraction);
 // this once a hold resolves -- release, or a LONG_PRESS event firing --
 // so a partial bar never lingers on screen into whatever's drawn next.
 void ui_clear_hold_progress();
+
+// ---------------------------------------------------------------------
+// Ambient alert banner + persistent badge (added 2026-07-13)
+// ---------------------------------------------------------------------
+// `category` and `level` are AlertCategory's / AlertLevel's enum
+// values (data_client.h) passed as plain uint8_t, matching
+// ui_tier_color()'s existing pattern of keeping this header decoupled
+// from data_client.h.
+
+// Draws the ambient alert banner as a single full-width fillRect()
+// band across the display's vertical center -- the widest, most
+// edge-safe region of the round display, and a single primitive call
+// per the "single calls render reliably, many small ones in a loop do
+// not" lesson from the hold-progress bar investigation. Overlays
+// whatever screen is currently shown; the caller must trigger a full
+// screen redraw to erase it later (a full-width strip can't be
+// cleanly cleared in place the way the small hold-progress bar can).
+void ui_draw_alert_banner(uint8_t category, uint8_t level, const char *message);
+
+// Draws a small persistent badge (single fillCircle() call) showing
+// only the single worst currently-active alert -- matching how the
+// Alerts screen already treats multiple simultaneous alerts
+// (worst-wins), rather than showing one indicator per category.
+// Position (left vs. right of center) indicates category so the
+// "visually distinct by category" requirement is met without needing
+// two badges at once.
+void ui_draw_alert_badge(uint8_t category, uint8_t level);
