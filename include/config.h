@@ -52,6 +52,18 @@
 #define KNOB_RESET_HOLD_MS   3000
 
 // ---------------------------------------------------------------------
+// Long-press hold-progress feedback (added Phase 3 -- real navigation)
+// ---------------------------------------------------------------------
+// Minimum continuous hold time (ms) before the hold-progress ring
+// starts drawing -- avoids a visible flicker on ordinary short presses
+// that happen to still read as "pressed" for a couple of
+// encoder_poll() cycles before release. Chosen well below
+// LONG_PRESS_MS so there's still a meaningful amount of ring fill to
+// watch before the long-press actually fires. See ui_common.h's
+// ui_draw_hold_progress() / ui_clear_hold_progress().
+#define LONG_PRESS_PROGRESS_MIN_MS   300
+
+// ---------------------------------------------------------------------
 // PropMon service
 // ---------------------------------------------------------------------
 #define PROPMON_DEFAULT_HOST  "192.168.6.29"

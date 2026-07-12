@@ -1,6 +1,7 @@
 // N4MI Desktop Instrument Series - Propagation Monitor
 // ui_common.cpp
 
+#include <math.h>
 #include "ui_common.h"
 #include "data_client.h"
 
@@ -81,4 +82,56 @@ void ui_format_age(uint32_t last_updated_ms, char *out, size_t out_len) {
     } else {
         snprintf(out, out_len, "Updated %lum ago", (unsigned long)(age_sec / 60));
     }
+}
+
+// ---------------------------------------------------------------------
+// Long-press hold-progress bar (added Phase 3 -- real navigation)
+// ---------------------------------------------------------------------
+// UPDATED 2026-07-12 (second pass): the original design drew the ring
+// as up to 90 short drawLine() calls fired in a tight loop per update.
+// Confirmed via Serial diagnostic that the draw calls were executing
+// correctly (fraction climbed smoothly 0.00 -> 0.97 every time, no
+// stutters -- also incidentally confirming the earlier hold-timing
+// concern in encoder.cpp was not a real debounce bug), yet nothing
+// ever appeared on the physical display. This matches the project's
+// own previously-documented sun-icon non-rendering bug exactly --
+// ui_draw_sun_icon() is one drawCircle() + eight drawLine() calls
+// fired back-to-back, and it silently failed to render too (worked
+// around with a text label instead). Everything that *does* render
+// reliably across every screen shares one trait: it's always a single
+// primitive call, not a rapid burst of many -- the Config screen's
+// divider line (one drawLine call, confirmed visible in real hardware
+// photos), display_clear()'s fillScreen(), and all text glyphs.
+// Rather than continue chasing many-small-primitive rendering (which
+// may be a genuine QSPI-transaction-rate quirk in this display/library
+// combination, still unconfirmed but now supported by two independent
+// occurrences), this redesigns the indicator as a single growing bar
+// -- one fillRect() call per update, matching the exact primitive
+// pattern already proven reliable everywhere else in this codebase.
+//
+// Positioned above every screen's header (all screens' headers start
+// around y=82 per the shared visual grammar) rather than near the
+// outer rim -- deliberately not near the display edge this time,
+// since the edge-visibility question from the first pass is now moot
+// if this location clears every screen's own content with margin.
+// Flag to Dan if this overlaps anything on real hardware; position is
+// reasoned, not yet hardware-confirmed.
+static const int16_t HOLD_BAR_X = 145;
+static const int16_t HOLD_BAR_Y = 30;
+static const int16_t HOLD_BAR_W = 100;
+static const int16_t HOLD_BAR_H = 6;
+
+void ui_draw_hold_progress(float fraction) {
+    if (!gfx) return;
+    if (fraction < 0.0f) fraction = 0.0f;
+    if (fraction > 1.0f) fraction = 1.0f;
+    int16_t fill_w = (int16_t)(HOLD_BAR_W * fraction);
+    if (fill_w > 0) {
+        gfx->fillRect(HOLD_BAR_X, HOLD_BAR_Y, fill_w, HOLD_BAR_H, UI_COLOR_GOOD);
+    }
+}
+
+void ui_clear_hold_progress() {
+    if (!gfx) return;
+    gfx->fillRect(HOLD_BAR_X, HOLD_BAR_Y, HOLD_BAR_W, HOLD_BAR_H, RGB565(0, 0, 0));
 }

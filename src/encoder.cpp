@@ -19,6 +19,30 @@
 // The transition table itself (which combinations of previous+current
 // 2-bit state count as a valid CW/CCW step) is unchanged from the
 // polled version -- it was already correct and bounce-resistant.
+//
+// ADDED Phase 3 (real navigation): encoder_get_hold_ms(), a read-only
+// getter over the existing button_was_pressed / button_press_started_ms
+// state below. Does not change press/release detection or timing in
+// any way -- it just exposes what encoder_poll() already tracks
+// internally, so main.cpp can draw a live hold-progress indicator
+// without needing a discrete SHORT_PRESS/LONG_PRESS event to have
+// fired yet.
+//
+// NOTE (flagged, not yet acted on): Dan reported real-world long-press
+// hold time feeling like ~2.5-3s against a coded 1500ms threshold.
+// There is no debounce on the button read itself (digitalRead(...)==LOW,
+// no minimum-stable-time check) -- unlike rotation, which has the
+// well-tested quadrature transition table above. If the switch contact
+// (or GPIO0 itself, which doubles as the boot-mode strap pin and can be
+// electrically noisier than an ordinary GPIO) reads HIGH for even one
+// encoder_poll() cycle during a real physical hold, button_press_started_ms
+// silently resets to "now" with no visual sign that happened, and the
+// hold has to build back up from zero. The new hold-progress ring
+// (see main.cpp / ui_common.cpp) should make this visible on real
+// hardware -- either it climbs smoothly (pure perception, nothing to
+// fix here) or it visibly stutters/resets mid-hold (confirms this
+// theory, and pinpoints exactly what to debounce). Deliberately not
+// changing this state machine blind without hardware to test against.
 
 #include "encoder.h"
 #include "config.h"
@@ -127,4 +151,9 @@ EncoderEvent encoder_poll() {
         }
     }
     return EncoderEvent::NONE;
+}
+
+uint32_t encoder_get_hold_ms() {
+    if (!button_was_pressed) return 0;
+    return (uint32_t)(millis() - button_press_started_ms);
 }

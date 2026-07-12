@@ -13,6 +13,14 @@
 // primitive shape draws (circles/lines) rendered fine. Minimum text
 // size going forward is 2. UI_COLOR_LABEL also brightened slightly
 // since it's now doing more visual work at the larger size.
+//
+// UPDATED Phase 3 (real navigation): added ui_draw_hold_progress() /
+// ui_clear_hold_progress() for the long-press hold-progress bar.
+// First implementation (a ring of many small drawLine() ticks) never
+// rendered on real hardware -- see ui_common.cpp for the diagnosis
+// (same root cause as the documented sun-icon non-rendering bug).
+// Redesigned as a single-fillRect() bar to match the primitive
+// pattern already proven reliable elsewhere in this codebase.
 
 #pragma once
 
@@ -84,3 +92,19 @@ const char *ui_tier_label(uint8_t tier);
 // Overview already had, per the project's "extract what's actually
 // shared once it's actually shared" framework scope principle.
 void ui_format_age(uint32_t last_updated_ms, char *out, size_t out_len);
+
+// Draws (or extends) the long-press hold-progress bar, positioned
+// above every screen's header. `fraction` is 0.0-1.0 of the way from
+// LONG_PRESS_PROGRESS_MIN_MS to LONG_PRESS_MS (see config.h). Drawn as
+// a single fillRect() call per update -- deliberately not many small
+// primitives (see ui_common.cpp for why: that was the first design,
+// and it silently failed to render on real hardware). Cheap
+// partial-region draw, never a full-screen redraw -- see Bug #1 in the
+// project brief.
+void ui_draw_hold_progress(float fraction);
+
+// Erases the hold-progress bar's screen region. Safe to call even if
+// no bar was ever drawn (idempotent, same draw cost either way). Call
+// this once a hold resolves -- release, or a LONG_PRESS event firing --
+// so a partial bar never lingers on screen into whatever's drawn next.
+void ui_clear_hold_progress();

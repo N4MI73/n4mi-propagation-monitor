@@ -21,3 +21,12 @@ enum class EncoderEvent {
 
 void encoder_init();
 EncoderEvent encoder_poll();
+
+// Returns milliseconds the button has been continuously held, or 0 if
+// not currently pressed. Read-only -- does not affect the press/
+// release event state tracked internally by encoder_poll(). Added
+// Phase 3 (real navigation) so UI code can show hold-progress feedback
+// while a long-press is still building -- encoder_poll() itself only
+// reports SHORT_PRESS/LONG_PRESS as completed, discrete events after
+// the fact, which isn't enough to draw a live progress indicator.
+uint32_t encoder_get_hold_ms();
