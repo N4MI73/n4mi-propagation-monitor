@@ -54,14 +54,41 @@
 // ---------------------------------------------------------------------
 // Long-press hold-progress feedback (added Phase 3 -- real navigation)
 // ---------------------------------------------------------------------
-// Minimum continuous hold time (ms) before the hold-progress ring
+// Minimum continuous hold time (ms) before the hold-progress bar
 // starts drawing -- avoids a visible flicker on ordinary short presses
 // that happen to still read as "pressed" for a couple of
 // encoder_poll() cycles before release. Chosen well below
-// LONG_PRESS_MS so there's still a meaningful amount of ring fill to
+// LONG_PRESS_MS so there's still a meaningful amount of bar fill to
 // watch before the long-press actually fires. See ui_common.h's
 // ui_draw_hold_progress() / ui_clear_hold_progress().
 #define LONG_PRESS_PROGRESS_MIN_MS   300
+
+// ---------------------------------------------------------------------
+// Live data fetch (added for the real PropMon HTTP fetch proof of
+// concept -- temporarily using hardcoded Wi-Fi credentials, see
+// wifi_credentials.h / wifi_credentials.h.example)
+// ---------------------------------------------------------------------
+// Max time to wait for Wi-Fi to associate before giving up (wifi_client.cpp).
+#define WIFI_CONNECT_TIMEOUT_MS   15000
+
+// How often the device automatically re-fetches from PropMon, in
+// addition to the short-press force-refresh. PropMon's own server-side
+// cache refreshes every 2-5 minutes (see project brief), so this is
+// deliberately shorter than that only to keep the "Updated Xs ago"
+// footer feeling responsive -- not because faster polling gets fresher
+// data from PropMon itself.
+#define LIVE_FETCH_INTERVAL_MS    60000
+
+// How often to redraw purely to refresh the "Updated Xs ago" footer's
+// elapsed-time text, independent of any actual data change. Without
+// this, the footer only updates as a side effect of some other redraw
+// (rotation, a press, a fetch) -- confirmed on real hardware 2026-07-15
+// that it otherwise sits frozen between those events even though real
+// time is passing. Skipped entirely on the Config screen (see main.cpp)
+// since nothing there needs live-ticking. Much lower frequency than the
+// redraws that caused the earlier lag bugs (#1/#2 in the brief), which
+// were dozens per second during fast interaction, not one every 5s.
+#define UI_TICK_INTERVAL_MS       5000
 
 // ---------------------------------------------------------------------
 // PropMon service

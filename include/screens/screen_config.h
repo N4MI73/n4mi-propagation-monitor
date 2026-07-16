@@ -1,14 +1,13 @@
 // N4MI Desktop Instrument Series - Propagation Monitor
 // screen_config.h
 //
-// Phase 3 placeholder config screen. Deliberately read-only and
-// deliberately honest about what is and isn't real yet: PropMon URL
-// is a live, compiled-in value; Wi-Fi and IP address have no backing
-// implementation at all yet (no Wi-Fi stack exists in this firmware),
-// so they're shown as explicit "Not yet built" placeholders rather
-// than faked or omitted. The real editable config menu (Wi-Fi reset,
-// PropMon URL field) is separate future work once Phase 3's Wi-Fi
-// portal exists -- see the project brief's Backlog.
+// UPDATED 2026-07-15: Wi-Fi and IP address are no longer placeholder
+// "Not yet built" text -- real Wi-Fi now exists (hardcoded credentials,
+// see wifi_client.h), so this screen shows real connection status and
+// IP directly from the Wi-Fi stack. Data source line is now dynamic:
+// shows "MOCK DATA" until the first successful live fetch, "LIVE"
+// after -- `live_data_active` is passed in from main.cpp, which is the
+// only place that knows whether a fetch has ever actually succeeded.
 //
 // Entered via long-press from any of the four data screens; exited by
 // knob rotation (returns to whichever screen was active before the
@@ -17,7 +16,8 @@
 
 #pragma once
 
-// No PropMonData needed -- every value this screen shows is either a
-// compile-time constant (PropMon URL) or a static "not yet built"
-// placeholder, not live instrument data.
-void screen_config_draw();
+// live_data_active: true once at least one successful live PropMon
+// fetch has occurred (main.cpp tracks this -- it never reverts to
+// false just because a later fetch fails, matching the "keep showing
+// last known-good" philosophy carried down from PropMon itself).
+void screen_config_draw(bool live_data_active);
