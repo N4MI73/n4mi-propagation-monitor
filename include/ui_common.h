@@ -93,6 +93,13 @@ const char *ui_tier_label(uint8_t tier);
 // shared once it's actually shared" framework scope principle.
 void ui_format_age(uint32_t last_updated_ms, char *out, size_t out_len);
 
+// Returns UI_COLOR_MUTED if `last_updated_ms` is recent, or
+// UI_COLOR_FAIR if it's older than STALE_DATA_THRESHOLD_MS (config.h)
+// -- a lightweight visual signal that the live fetch might be failing,
+// without needing a dedicated error screen. Shared by every screen's
+// "Updated Xs ago" footer so the threshold lives in one place.
+uint16_t ui_staleness_color(uint32_t last_updated_ms);
+
 // Splits `msg` across two output buffers, breaking at the last space
 // at or before (line1_cap-1) characters rather than mid-word. If the
 // remainder still doesn't fit in line2's capacity, it's truncated with

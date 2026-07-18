@@ -36,6 +36,12 @@
 // same wrap behavior -- logic itself is unchanged, just relocated so
 // both consumers share one proven implementation instead of risking
 // two that quietly diverge.
+//
+// UPDATED 2026-07-17: footer color is now staleness-aware via the
+// shared ui_staleness_color() helper -- shifts from muted to amber
+// once data crosses STALE_DATA_THRESHOLD_MS (config.h), a lightweight
+// signal that the live fetch might be failing without needing a
+// dedicated error screen.
 
 #include "screens/screen_alerts.h"
 #include "display_driver.h"
@@ -121,5 +127,5 @@ void screen_alerts_draw(const PropMonData &data) {
 
     char footer[32];
     ui_format_age(data.last_updated_ms, footer, sizeof(footer));
-    ui_draw_centered_text(footer, 320, 2, UI_COLOR_MUTED);
+    ui_draw_centered_text(footer, 320, 2, ui_staleness_color(data.last_updated_ms));
 }

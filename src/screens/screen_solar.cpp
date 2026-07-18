@@ -17,6 +17,12 @@
 //
 // Layout approved against an SVG mockup 2026-07-11 before writing this
 // file, following the same mockup-first workflow as Overview and Bands.
+//
+// UPDATED 2026-07-17: footer color is now staleness-aware via the
+// shared ui_staleness_color() helper -- shifts from muted to amber
+// once data crosses STALE_DATA_THRESHOLD_MS (config.h), a lightweight
+// signal that the live fetch might be failing without needing a
+// dedicated error screen.
 
 #include "screens/screen_solar.h"
 #include "display_driver.h"
@@ -99,5 +105,5 @@ void screen_solar_draw(const PropMonData &data) {
 
     char footer[32];
     ui_format_age(data.last_updated_ms, footer, sizeof(footer));
-    ui_draw_centered_text(footer, 346, 2, UI_COLOR_MUTED);
+    ui_draw_centered_text(footer, 346, 2, ui_staleness_color(data.last_updated_ms));
 }

@@ -79,6 +79,14 @@
 // data from PropMon itself.
 #define LIVE_FETCH_INTERVAL_MS    60000
 
+// How old data can get before the footer's "Updated Xs ago" text
+// changes color to flag it as stale -- a lightweight signal that the
+// live fetch might be failing, without needing a dedicated error
+// screen. Well beyond both the automatic fetch interval above and
+// PropMon's own slowest refresh cadence (5 min for solar/bands, per
+// the project brief), so normal healthy operation never trips it.
+#define STALE_DATA_THRESHOLD_MS   600000  // 10 minutes
+
 // How often to redraw purely to refresh the "Updated Xs ago" footer's
 // elapsed-time text, independent of any actual data change. Without
 // this, the footer only updates as a side effect of some other redraw

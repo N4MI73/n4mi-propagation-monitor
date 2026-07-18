@@ -13,6 +13,12 @@
 // file -- fixed band order (not grouped by tier) was Dan's explicit
 // choice, so a given band's position on screen never moves session to
 // session regardless of current conditions.
+//
+// UPDATED 2026-07-17: footer color is now staleness-aware via the
+// shared ui_staleness_color() helper -- shifts from muted to amber
+// once data crosses STALE_DATA_THRESHOLD_MS (config.h), a lightweight
+// signal that the live fetch might be failing without needing a
+// dedicated error screen.
 
 #include "screens/screen_bands.h"
 #include "display_driver.h"
@@ -59,7 +65,7 @@ void screen_bands_draw(const PropMonData &data) {
 
     char footer[32];
     ui_format_age(data.last_updated_ms, footer, sizeof(footer));
-    ui_draw_centered_text(footer, 354, 2, UI_COLOR_MUTED);
+    ui_draw_centered_text(footer, 354, 2, ui_staleness_color(data.last_updated_ms));
 
     uint32_t t_end = millis();
 #if DEBUG_VERBOSE

@@ -84,6 +84,11 @@ void ui_format_age(uint32_t last_updated_ms, char *out, size_t out_len) {
     }
 }
 
+uint16_t ui_staleness_color(uint32_t last_updated_ms) {
+    uint32_t age_ms = millis() - last_updated_ms;
+    return (age_ms >= STALE_DATA_THRESHOLD_MS) ? UI_COLOR_FAIR : UI_COLOR_MUTED;
+}
+
 // Moved here 2026-07-13 from screen_alerts.cpp's local static
 // split_message() -- logic unchanged, just relocated and renamed so
 // the ambient alert banner can reuse the exact same proven wrap
