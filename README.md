@@ -113,6 +113,12 @@ Tempest, and NWS — fetched and digested by the companion PropMon service (see 
 
 ---
 
+## Blog Post
+
+I added a post about PropMon to my n4mi.tech blog: [PropMon - a Desktop Propagation Monitor](https://n4mi.tech/propmon-a-desktop-propagation-monitor/
+
+---
+
 ## Related projects
 
 - **[streamdeck-hamradio](https://github.com/N4MI73/streamdeck-hamradio)** — PropMon, the
