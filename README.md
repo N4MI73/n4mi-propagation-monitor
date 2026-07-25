@@ -1,40 +1,31 @@
-# N4MI Desktop Instrument Series
-**Propagation Monitor** — N4MI | Dan Marshall
+# N4MI Propagation Monitor
 
-A small family of ESP32-based desktop hardware instruments for the ham shack. The first
-instrument — **Propagation Monitor** — is a round-AMOLED desk display showing live HF band
-conditions, solar data, and tower/weather alerts, pulled from a self-hosted backend service
-called [PropMon](https://github.com/N4MI73/streamdeck-hamradio/tree/main/propmon).
+A small desk instrument that shows live HF propagation conditions at a glance — built on
+the LilyGO T-Encoder Pro (ESP32-S3, 390×390 round AMOLED, rotary encoder). Cycle through
+four screens with a twist of the knob to see band conditions, solar indices, and active
+weather/tower alerts, without opening a laptop or a browser tab.
 
-This repo covers the firmware only. PropMon (deployment, environment variables, data sources,
-API shape) is documented in its own repo — see [Related Projects](#related-projects) below.
+Part of the **N4MI Desktop Instrument Series** — a growing family of small, single-purpose
+ham radio desk instruments on the same hardware platform. This repo covers the
+Propagation Monitor specifically; additional instruments in the series live in their own
+dedicated repos as they're built.
 
 ---
 
-## What this is
+## What it does
 
-Inspired by [FlightScnr](https://github.com/yashmulgaonkar/FlightScnr) — built clean-room on the
-same hardware platform, referencing it only for what's proven to work (display library, captive
-portal UX, idle timeout values), no code copied. No credentials or personal configuration are
-committed anywhere in this repo; see [Wi-Fi Setup](#wi-fi-setup) for how that's handled.
+- **Overview** — headline band-condition summary at a glance (which tier — GOOD/FAIR/POOR
+  — has the most bands right now, plus a secondary line for the next-best tier)
+- **Bands** — all ten HF bands (160m–6m), fixed screen order, each colored by its own
+  condition tier
+- **Solar** — SFI, sunspot number, K-index, A-index, X-ray flare class, solar wind speed
+- **Alerts** — the single worst active tower/weather or propagation alert, with an ambient
+  banner and persistent badge that surface new or escalating alerts on any screen
+- **Staleness indicator** — footer text shifts color if data hasn't refreshed recently,
+  so you always know whether you're looking at current conditions
 
-Four data screens, cycled by turning the knob:
-
-| Screen | Shows |
-|---|---|
-| **Overview** | Dynamic best-tier headline (GOOD/FAIR/POOR), band list, compact SFI/SS/K/A stats, tower status |
-| **Bands** | All 10 bands (160m–6m) individually, fixed order, color-coded by tier |
-| **Solar** | Full-detail SFI/sunspots/K-index/A-index/X-ray/solar-wind, larger stat grid |
-| **Alerts** | Worst active alert (tower or propagation), full message, "+N more" if applicable |
-
-Plus a **Config** screen (long-press) showing live Wi-Fi status, IP address, PropMon URL, and
-data source (live vs. mock), and a **Setup** screen (hold 3s+) for connecting to Wi-Fi without
-ever touching source code — see below.
-
-An ambient alert system layers on top of all four data screens: a full-width banner appears when
-the worst active alert changes (new alert, or a severity escalation), and a small persistent
-badge (position indicates category — tower or propagation) stays visible on every screen for as
-long as any alert remains active.
+Navigation is knob-only: rotate to cycle screens, short-press to force an immediate data
+refresh, long-press to open a Config screen (Wi-Fi status, data source, IP address).
 
 ---
 
@@ -42,165 +33,95 @@ long as any alert remains active.
 
 | Item | Detail |
 |---|---|
-| Board | [LilyGO T-Encoder Pro](https://github.com/Xinyuan-LilyGO/T-Encoder-Pro) |
-| Chip | ESP32-S3-R8 (8MB PSRAM), 16MB flash |
-| Display | 390×390 round AMOLED — **CO5300 or SH8601 driver, varies by unit** (see [Toolchain](#toolchain-notes)) |
-| Input | Rotary encoder with push button. A capacitive touch controller is physically present but not used in this firmware. |
-| Connectivity | Wi-Fi (station mode + a temporary AP for first-time setup) |
+| Board | LilyGO T-Encoder Pro |
+| Chip | ESP32-S3 (8MB PSRAM) |
+| Display | 390×390 round AMOLED (CO5300 driver — see note below) |
+| Input | Rotary encoder with push button |
+| Connectivity | Wi-Fi, USB-C |
+
+**Display driver note:** the T-Encoder Pro has shipped with two different panel
+revisions. This project uses `Arduino_CO5300`. If you build this on your own unit and get
+a blank screen despite clean serial output, your panel may be the older SH8601 revision —
+try swapping the display driver class first.
 
 ---
 
-## Prerequisites
+## Getting started
 
-- A running instance of **[PropMon](https://github.com/N4MI73/streamdeck-hamradio/tree/main/propmon)**,
-  reachable on your local network. This firmware is a pure API consumer — see that repo's README
-  for deploying it (Portainer/Docker Compose). **This README assumes you're already comfortable
-  standing up a Portainer stack**; it doesn't walk through Docker or NAS basics from zero.
-- [PlatformIO](https://platformio.org/) (VS Code extension or CLI)
-- A phone or laptop with a Wi-Fi radio, for the on-device setup flow
+### Toolchain
+- [PlatformIO](https://platformio.org/) with the **pioarduino** platform fork — official
+  PlatformIO's `espressif32` platform does not currently support the ESP32 Arduino core
+  version this project requires, so the community fork is necessary, not optional.
+- Arduino framework, `Arduino_GFX` library (leave the version unpinned — pinned older
+  versions don't include CO5300/SH8601 support).
 
----
+### Build & flash
+1. Clone this repo and open it in VS Code with the PlatformIO extension installed.
+2. Copy `include/wifi_credentials.h.example` to `include/wifi_credentials.h` — **this file
+   is a one-time fallback only** and is gitignored; normal setup uses the on-device
+   captive portal described below, not this file.
+3. Build and upload via PlatformIO as usual.
 
-## Toolchain notes
-
-- **Platform: [pioarduino](https://github.com/pioarduino/platform-espressif32) fork, not
-  official PlatformIO `espressif32`.** The display library requires ESP32 Arduino core 3.x;
-  official PlatformIO's `espressif32` platform only supports core 2.x as of this writing.
-  `platformio.ini` already points at the correct platform URL — no action needed beyond a normal
-  `pio run`.
-- **Windows users:** enable long path support (`LongPathsEnabled=1` in the registry) before
-  building — the pioarduino toolchain's file paths can exceed Windows' default limit.
-- **Display driver varies by unit.** LilyGO has shipped this board with two different
-  panel/touch revisions (SH8601+CHSC5816 and CO5300+CST816). This firmware is built against
-  CO5300. If your unit shows a blank screen despite a clean build and flash, try swapping the
-  driver class in `display_driver.cpp`/`.h` to `Arduino_SH8601`.
+### Wi-Fi setup
+On first boot (or after a factory-reset-style long hold), the device opens its own Wi-Fi
+access point with a captive portal. Connect to it from your phone, select your home
+network from the scanned list, and enter your password. Credentials are stored on-device
+and reused on every subsequent boot.
 
 ---
 
-## Building & flashing
+## Data source
 
-```
-git clone https://github.com/N4MI73/n4mi-desktop-instruments
-cd n4mi-desktop-instruments
-```
+This instrument does **not** fetch propagation data directly from external sources —
+it polls a small, self-hosted backend service called **PropMon**, which handles fetching,
+rating, and caching HF propagation and local weather/tower alert data, and serves it as a
+single flat JSON endpoint.
 
-Copy `include/wifi_credentials.h.example` to `include/wifi_credentials.h` — this file is
-gitignored and never committed. **As of the real captive-portal setup below, this file is only a
-fallback**, used once on a genuinely fresh device (no credentials stored yet) before the on-device
-setup flow has ever run. If you'd rather skip the on-device flow entirely for a first build, fill
-in real values here; otherwise the placeholder values are fine, since setup will happen on-device.
+PropMon is a separate project, maintained here:
+**[github.com/N4MI73/streamdeck-hamradio](https://github.com/N4MI73/streamdeck-hamradio)**
+(see the `propmon/` folder). If you want to run this firmware yourself, you'll need a
+working PropMon deployment first — its README covers deployment via Docker/Portainer.
 
-Build and flash via PlatformIO (`pio run -t upload`, or the PlatformIO IDE's Upload button),
-targeting the `tencoder-pro` environment.
-
----
-
-## Wi-Fi Setup
-
-**On first boot** (or any time credentials aren't yet stored), or **by holding the knob for 3+
-seconds** from any screen (a continued hold past the regular 1.5s long-press, which opens
-Config):
-
-1. The device opens its own temporary Wi-Fi network, `N4MI-PropMon-Setup` (open, no password)
-2. Connect your phone to that network — most phones will auto-prompt a sign-in page; if not,
-   open a browser to `192.168.4.1`
-3. The page shows a scan of nearby networks — pick yours, enter its password, submit
-4. The device validates the credentials (this one step is deliberately blocking — both your
-   phone's page and the device's own screen/knob pause for up to ~15 seconds while it confirms
-   the password actually works)
-5. On success, credentials are saved to the device's onboard flash (NVS) and it immediately
-   fetches live data
-
-Setup runs independently of which screen is currently displayed — rotating the knob to check
-Overview/Bands/etc. mid-setup doesn't cancel it; only a long-press while actually looking at the
-Setup screen does, or a 5-minute timeout if nobody finishes.
-
-**Credentials never touch this repo.** They're either entered on-device (above, stored in NVS
-only) or, for the fallback path, kept in your local `include/wifi_credentials.h`, which is
-gitignored.
+This firmware treats PropMon strictly as an external API and expects:
+- A fixed, validated band order in every response
+- A non-empty `alerts` array (a steady-state "no active alerts" placeholder entry, not an
+  empty array)
 
 ---
 
-## PropMon API expectations
+## Known limitations
 
-This firmware polls PropMon's `GET /api/instrument/propagation` endpoint — see PropMon's own
-README for the full response shape, data sources, and refresh cadence. Two things this firmware
-specifically depends on, worth knowing if you're running a different or modified backend:
-
-- **Bands must appear in a fixed order** (`160m, 80m, 40m, 30m, 20m, 17m, 15m, 12m, 10m, 6m`) —
-  the firmware validates this on every fetch and **rejects the entire response** if the order (or
-  count) doesn't match, rather than risk silently mislabeling a band's condition.
-- **The `alerts` array is expected to contain at least one entry even in steady state** — a
-  single `{"category": "tower", "level": "NONE", "message": "..."}` placeholder, not an empty
-  array. This is what PropMon itself returns; a from-scratch backend should match this shape.
-
-**PropMon's host/port are currently a compile-time constant** (`config.h`,
-`PROPMON_DEFAULT_HOST`/`PROPMON_DEFAULT_PORT`) — not yet part of the on-device setup flow. If
-you're pointing this at your own PropMon instance, edit those two values and reflash.
+- No dedicated "Wi-Fi unreachable" or "PropMon unreachable" screens — a failed fetch just
+  keeps showing the last successfully retrieved data, with the staleness indicator as the
+  passive signal that something's wrong.
+- If Wi-Fi drops mid-operation, reconnect attempts block the UI for up to 15 seconds. This
+  is a known, accepted rough edge — it self-recovers and doesn't corrupt anything.
+- Touch input (the panel has a capacitive touch controller) is not currently used —
+  navigation is knob-only.
 
 ---
 
-## Known limitations (current state, not roadmap)
+## License & credits
 
-- **No dedicated "Wi-Fi unreachable" or "PropMon unreachable" screens yet.** A failed fetch just
-  keeps showing the last successfully-fetched data, with the footer's "Updated Xs ago" text as
-  the only (passive) signal that something might be stale.
-- **If Wi-Fi drops mid-operation, the automatic reconnect attempt blocks the UI for up to 15
-  seconds.** Self-recovers, doesn't corrupt data — just a brief freeze.
-- **PropMon's URL isn't configurable on-device** — see above, it's a compile-time constant for
-  now.
-- **Touch/swipe is not implemented.** The panel's touch controller is present but unused; all
-  interaction is via the knob.
-- **Manual navigation only** — no auto-cycling between screens.
+This project is built clean-room, inspired by
+[FlightScnr](https://github.com/yashmulgaonkar/FlightScnr) (CC BY-NC-SA 4.0) — FlightScnr
+was a reference for what's proven to work on this exact hardware (display library family,
+captive-portal UX pattern, idle timeout value), but no code is copied from it.
 
----
-
-## Project structure
-
-```
-n4mi-desktop-instruments/
-├── platformio.ini
-├── include/
-│   ├── config.h                 Pin assignments, timing constants, PropMon host/port
-│   ├── display_driver.h
-│   ├── encoder.h
-│   ├── data_client.h            PropMonData model, mock data, live HTTP fetch
-│   ├── ui_common.h              Shared colors, text helpers, alert banner/badge, hold-progress bar
-│   ├── wifi_client.h            Wi-Fi connect/status, NVS credential storage
-│   ├── wifi_portal.h            Captive portal (AP, DNS redirect, web server)
-│   ├── wifi_credentials.h.example
-│   └── screens/                 One header per screen
-└── src/
-    ├── main.cpp                 Screen state machine, event handling, fetch/redraw loop
-    ├── display_driver.cpp
-    ├── encoder.cpp
-    ├── data_client.cpp
-    ├── ui_common.cpp
-    ├── wifi_client.cpp
-    ├── wifi_portal.cpp
-    └── screens/                 One .cpp per screen
-```
-
----
-
-## Related Projects
-
-**[PropMon](https://github.com/N4MI73/streamdeck-hamradio/tree/main/propmon)** — the backend
-this firmware consumes. Deployment (Portainer/Docker Compose), environment variables, data
-sources, refresh cadence, and the full band-rating model are documented in that repo. PropMon is
-general-purpose — anything that can make an HTTP GET request can use it; this firmware is simply
-its first consumer.
+Propagation and weather data ultimately originates from HamQSL, NOAA SWPC, WeatherFlow
+Tempest, and NWS — fetched and digested by the companion PropMon service (see above).
 
 ---
 
 ## Blog Post
 
-This project is also described on my blog, n4mi.tech, in this article [PropMon – a Desktop Propagation Monitor](https://n4mi.tech/propmon-a-desktop-propagation-monitor/)
+I added a post about PropMon to my n4mi.tech blog: [PropMon - a Desktop Propagation Monitor](https://n4mi.tech/propmon-a-desktop-propagation-monitor/
 
 ---
 
-## Licensing
+## Related projects
 
-Built clean-room, referencing [FlightScnr](https://github.com/yashmulgaonkar/FlightScnr) (CC
-BY-NC-SA 4.0) only for hardware feasibility — no code copied. LilyGO's own vendor sample code is
-separately GPL-3 and also not used directly.
+- **[streamdeck-hamradio](https://github.com/N4MI73/streamdeck-hamradio)** — PropMon, the
+  backend data service this firmware depends on.
+- More instruments in the N4MI Desktop Instrument Series are in progress, each in their
+  own dedicated repo following the naming pattern `n4mi-[instrument]-monitor`.
