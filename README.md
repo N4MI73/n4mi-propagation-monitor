@@ -113,6 +113,22 @@ Tempest, and NWS — fetched and digested by the companion PropMon service (see 
 
 ---
 
+## Images
+
+![Propagation Monitor on 3d printed stand](images/overview_stand.png)
+
+![Overview screen](images/overview.jpg)
+
+![Solar screen](images/solar.jpg)
+
+![Bands screen](images/bands.jpg)
+
+![Alert screen](images/alert.jpg)
+
+![Configuration screen](images/config.jpg)
+
+---
+
 ## Blog Post
 
 I added a post about PropMon to my n4mi.tech blog: [PropMon - a Desktop Propagation Monitor](https://n4mi.tech/propmon-a-desktop-propagation-monitor/
