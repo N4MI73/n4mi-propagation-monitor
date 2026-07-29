@@ -23,6 +23,14 @@
 // once data crosses STALE_DATA_THRESHOLD_MS (config.h), a lightweight
 // signal that the live fetch might be failing without needing a
 // dedicated error screen.
+//
+// UPDATED 2026-07-27: header changed from "N4MI PROPMON" (muted gray)
+// to "PROPMON" (green, UI_COLOR_GOOD) -- dropping the personal-callsign
+// prefix since this may eventually be useful to other hams, and
+// matching the instrument-name-in-green convention established on the
+// APRSMon screen in the series' second instrument. Size/weight left
+// unchanged (still textSize 2, not bold) -- only color and text
+// changed, since that's what was actually asked for.
 
 #include "screens/screen_overview.h"
 #include "display_driver.h"
@@ -88,7 +96,7 @@ void screen_overview_draw(const PropMonData &data) {
 
     char band_list[48];
 
-    ui_draw_centered_text("N4MI PROPMON", 35, 2, UI_COLOR_LABEL);
+    ui_draw_centered_text("PROPMON", 35, 2, UI_COLOR_GOOD);
 
     build_band_list(data, primary_tier, band_list, sizeof(band_list));
 #if DEBUG_VERBOSE
