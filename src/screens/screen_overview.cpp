@@ -96,7 +96,7 @@ void screen_overview_draw(const PropMonData &data) {
 
     char band_list[48];
 
-    ui_draw_centered_text("PROPMON", 35, 2, UI_COLOR_GOOD);
+    ui_draw_centered_text("PROPMON", 35, 3, UI_COLOR_GOOD);
 
     build_band_list(data, primary_tier, band_list, sizeof(band_list));
 #if DEBUG_VERBOSE
