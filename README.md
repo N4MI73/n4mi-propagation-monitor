@@ -5,10 +5,9 @@ the LilyGO T-Encoder Pro (ESP32-S3, 390×390 round AMOLED, rotary encoder). Cycl
 four screens with a twist of the knob to see band conditions, solar indices, and active
 weather/tower alerts, without opening a laptop or a browser tab.
 
-Part of the **N4MI Desktop Instrument Series** — a growing family of small, single-purpose
-ham radio desk instruments on the same hardware platform. This repo covers the
-Propagation Monitor specifically; additional instruments in the series live in their own
-dedicated repos as they're built.
+Part of the **N4MI Desktop Instrument Series** — three small, single-purpose ham radio
+desk instruments, each in its own repo. This repo covers the Propagation Monitor
+specifically.
 
 ---
 
@@ -78,9 +77,10 @@ rating, and caching HF propagation and local weather/tower alert data, and serve
 single flat JSON endpoint.
 
 PropMon is a separate project, maintained here:
-**[github.com/N4MI73/streamdeck-hamradio](https://github.com/N4MI73/streamdeck-hamradio)**
-(see the `propmon/` folder). If you want to run this firmware yourself, you'll need a
-working PropMon deployment first — its README covers deployment via Docker/Portainer.
+**[github.com/N4MI73/n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server/tree/main/propmon)**
+(see the `propmon/` folder; moved from `streamdeck-hamradio` on 2026-10-19). If you want
+to run this firmware yourself, you'll need a working PropMon deployment first — its README
+covers deployment via Docker/Portainer.
 
 This firmware treats PropMon strictly as an external API and expects:
 - A fixed, validated band order in every response
@@ -131,13 +131,14 @@ Tempest, and NWS — fetched and digested by the companion PropMon service (see 
 
 ## Blog Post
 
-I added a post about PropMon to my n4mi.tech blog: [PropMon - a Desktop Propagation Monitor](https://n4mi.tech/propmon-a-desktop-propagation-monitor/
+I added a post about PropMon to my n4mi.tech blog: [PropMon - a Desktop Propagation Monitor](https://n4mi.tech/propmon-a-desktop-propagation-monitor/)
 
 ---
 
 ## Related projects
 
-- **[streamdeck-hamradio](https://github.com/N4MI73/streamdeck-hamradio)** — PropMon, the
-  backend data service this firmware depends on.
-- More instruments in the N4MI Desktop Instrument Series are in progress, each in their
-  own dedicated repo following the naming pattern `n4mi-[instrument]-monitor`.
+- **[n4mi-shack-server](https://github.com/N4MI73/n4mi-shack-server/tree/main/propmon)** —
+  PropMon (`propmon/` folder), the backend data service this firmware depends on.
+- The other instruments in the N4MI Desktop Instrument Series:
+  **[n4mi-aprs-monitor](https://github.com/N4MI73/n4mi-aprs-monitor)** (APRSMon) and
+  **[n4mi-dx-monitor](https://github.com/N4MI73/n4mi-dx-monitor)** (DXMon).
